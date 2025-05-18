@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+jinja2
+pdfkit
+pytz
+numpy
+pandas
+scipy
+statsmodels
+plotly
+python-multipart

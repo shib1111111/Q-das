@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCA/CMM Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            box-sizing: border-box;
+        }
+        .header-table {
+            width: 100%;
+            font-size: 10pt;
+            margin-bottom: 20px;
+        }
+        .header-table td {
+            padding: 3px;
+            vertical-align: top;
+        }
+        .header-title {
+            font-size: 24pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .plotly-chart {
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .stats-table {
+            width: 100%;
+            font-size: 10pt;
+        }
+        .stats-table td {
+            padding: 6px;
+            vertical-align: top;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .analysis-section p {
+            font-size: 10pt;
+            margin-bottom: 5px;
+        }
+        .arrow-up {
+            color: green;
+        }
+        .arrow-down {
+            color: red;
+        }
+        .footer {
+            font-size: 9pt;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="header-title">CDAC CHENNAI MCA/CMM Reporting</div>
+        <table class="header-table">
+            <tr>
+                <td style="width: 25%;">
+                    <div>Op.Name: {{ metadata.Operation_Name }}</div>
+                    <div>Part no: {{ metadata.Part_Number }}</div>
+                    <div>Part descr: {{ metadata.Part_Description }}</div>
+                    <div>Char.No: {{ param.char_number|default('N/A') }}</div>
+                    <div>Char.Class: {{ param.char_class|default('N/A') }}</div>
+                    <div>Nom.val: {{ param.Nominal_Value|default('N/A') }}</div>
+                    <div>Char.Remark: </div>
+                </td>
+                <td style="width: 25%;">
+                    <div>Evaluation from {{ param.evaluation_starttime|default('N/A') }} to {{ param.evaluation_endtime|default('N/A') }}</div>
+                    <div>OP no: {{ metadata.Operation_Number }}</div>
+                    <div>&nbsp;</div>
+                    <div>Char.Descr: {{ param.char_descr|default('N/A') }}</div>
+                    <div>Calc.Tol: {{ param.Tolerance|default('N/A') }}</div>
+                    <div>Unit: </div>
+                    <div>&nbsp;</div>
+                </td>
+                <td style="width: 25%;">
+                    <div>&nbsp;</div>
+                    <div>&nbsp;</div>
+                    <div>&nbsp;</div>
+                    <div>&nbsp;</div>
+                    <div>USL: {{ param.USL|default('N/A') }}</div>
+                    <div>LSL: {{ param.LSL|default('N/A') }}</div>
+                    <div>&nbsp;</div>
+                </td>
+                <td style="width: 25%;">
+                    <div>Date: {{ current_datetime }} Page: {{ page_number }}</div>
+                    <div>&nbsp;</div>
+                    <div>Drw.No: {{ metadata.Drawing_Number }}</div>
+                    <div>Mach.Descr: {{ metadata.mach_descr }}</div>
+                    <div>Subgr.size: {{ param.Subgroup_Size|default('N/A') }}</div>
+                    <div>Subgr.type: {{ param.Subgroup_Type|default('N/A') }}</div>
+                    <div>&nbsp;</div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Parameters -->
+        <div class="mb-5">
+            <!-- Scatter Plot -->
+            <div class="plotly-chart">
+                {{ param.plot_html|safe if param.plot_html else '<p>No chart available</p>' }}
+            </div>
+
+            <!-- Statistical Table -->
+            <table class="stats-table">
+                <tr>
+                    <td style="width: 33%;">
+                        <strong>Drawing Values</strong><br>
+                        Tm = {{ '%.6f'|format(param.Nominal_Value) if param.Nominal_Value is number else 'N/A' }}<br>
+                        LSL = {{ '%.6f'|format(param.LSL) if param.LSL is number else 'N/A' }}<br>
+                        USL = {{ '%.6f'|format(param.USL) if param.USL is number else 'N/A' }}<br>
+                        T = {{ '%.6f'|format(param.Tolerance) if param.Tolerance is number else 'N/A' }}<br>
+                        Char.Class = {{ param.char_class|default('N/A') }}
+                    </td>
+                    <td style="width: 33%;">
+                        <strong>Collected Values</strong><br>
+                        x̃ = {{ '%.6f'|format(param.median) if param.median is number else 'N/A' }}<br>
+                        x<sub>min</sub> = {{ '%.6f'|format(param.min) if param.min is number else 'N/A' }}<br>
+                        x<sub>max</sub> = {{ '%.6f'|format(param.max) if param.max is number else 'N/A' }}<br>
+                        R = {{ '%.6f'|format(param.range) if param.range is number else 'N/A' }}<br>
+                        n<sub>eff</sub> = {{ param.effective_sample_size|default('N/A') }}<br>
+                        n<sub>tot</sub> = {{ param.sample_size|default('N/A') }}<br>
+                        n<sub><T></sub> = {{ param.n_within_tolerance|default('N/A') }}<br>
+                        n<sub>USL</sub> = {{ param.n_above_usl|default('N/A') }}<br>
+                        n<sub>LSL</sub> = {{ param.n_below_lsl|default('N/A') }}
+                    </td>
+                    <td style="width: 33%;">
+                        <strong>Statistics</strong><br>
+                        x̄ = {{ '%.6f'|format(param.mean) if param.mean is number else 'N/A' }}<br>
+                        s = {{ '%.6f'|format(param.std) if param.std is number else 'N/A' }}<br>
+                        x<sub>50%</sub> = {{ '%.6f'|format(param.percentile_50) if param.percentile_50 is number else 'N/A' }}<br>
+                        x<sub>0.135%</sub> = {{ '%.6f'|format(param.percentile_0_135) if param.percentile_0_135 is number else 'N/A' }}<br>
+                        x<sub>99.865%</sub> = {{ '%.6f'|format(param.percentile_99_865) if param.percentile_99_865 is number else 'N/A' }}<br>
+                        6s = {{ '%.6f'|format(param.std * 6) if param.std is number else 'N/A' }}
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Analysis Section -->
+            <div class="analysis-section">
+                <p>Anderson-Darling test: {{ 'H1 : subgroup is not derived from a Normal distribution' if param.distribution_p_value < 0.05 else 'H0 : subgroup is derived from a Normal distribution' }}</p>
+                <p>p value: {{ '%.6f'|format(param.distribution_p_value) if param.distribution_p_value is number else 'N/A' }}</p>
+                <p>Distribution: {{ param.distribution_name|default('N/A') }} Distribution</p>
+                <p>Calculation Methods: M2,1 percentile (0.135%-50%-99.865%)</p>
+
+=                <p>Potential Capability Index (A) Cp: {{ '%.6f'|format(param.Cp_lower) if param.Cp_lower is number else 'N/A' }} <= {{ '%.6f'|format(param.Cp) if param.Cp is number else 'N/A' }} <= {{ '%.6f'|format(param.Cp_upper) if param.Cp_upper is number else 'N/A' }} <span class="{{ 'arrow-up' if param.cp_requirements_met else 'arrow-down' if param.Cp is number else '' }}">{{ '↑' if param.cp_requirements_met else '↓' if param.Cp is number else '' }}</span></p>
+                <p>Critical Capability Index (A) Cpk: {{ '%.6f'|format(param.Cpk_lower) if param.Cpk_lower is number else 'N/A' }} <= {{ '%.6f'|format(param.Cpk) if param.Cpk is number else 'N/A' }} <= {{ '%.6f'|format(param.Cpk_upper) if param.Cpk_upper is number else 'N/A' }} <span class="{{ 'arrow-up' if param.cpk_requirements_met else 'arrow-down' if param.Cpk is number else '' }}">{{ '↑' if param.cpk_requirements_met else '↓' if param.Cpk is number else '' }}</span></p>
+                <p>Demand Potential Capability Index (A) Cp target: {{ '%.2f'|format(param.cp_target) if param.cp_target is number else 'N/A' }}</p>
+                <p>Demand Critical Capability Index (A) Cpk target: {{ '%.2f'|format(param.cpk_target) if param.cpk_target is number else 'N/A' }}</p>
+                <p class="fw-bold">{{ 'Requirements were met (Cp, Cpk, LV)' if param.requirements_met else 'Requirements were not met (Cp, Cpk, LV)' }} <span class="{{ 'arrow-up' if param.requirements_met else 'arrow-down' }}">{{ '↑' if param.requirements_met else '↓' }}</span></p>
+            </div>
+
+            <p class="text-muted small">Page {{ page_number }} of {{ total_pages }}</p>
+        </div>
+
+        <!-- Footer -->
+        <p class="footer">
+            Copyright © QDAS Process Capability ({{ current_date }})<br>
+            Made by CDAC Chennai
+        </p>
+    </div>
+</body>
+</html>
