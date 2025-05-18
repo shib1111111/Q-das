@@ -9,3 +9,4 @@ scipy
 statsmodels
 plotly
 python-multipart
+openpyxl

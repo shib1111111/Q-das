@@ -1,11 +1,38 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from utils import analyze_inspection_data
-from pdf_render import render_report_to_pdf
+from fastapi.encoders import jsonable_encoder
+from app_utils.utils import analyze_inspection_data
+from app_utils.pdf_render import render_report_to_pdf
 import tempfile
 import os
 import base64
 import logging
+import numpy as np
+import datetime
+
+def sanitize_for_json(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple, set)):
+        return [sanitize_for_json(v) for v in obj]
+    elif isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+    elif hasattr(obj, "item") and callable(obj.item):
+        try:
+            return obj.item()
+        except Exception:
+            pass
+    try:
+        # Try to convert any remaining non-serializable objects to string
+        return str(obj)
+    except Exception:
+        # Fallback if even str() fails
+        return None
+
 
 api_router = APIRouter()
 
@@ -34,10 +61,10 @@ async def extract_info(file: UploadFile = File(...)):
         # Clean up Excel file
         os.remove(temp_path)
 
-        return JSONResponse(content={
-            "metadata": metadata,
-            "parameter_info": parameter_info
-        })
+        return JSONResponse(content=jsonable_encoder({
+            "metadata": sanitize_for_json(metadata),
+            "parameter_info": sanitize_for_json(parameter_info)
+        }))
 
     except Exception as e:
         logger.exception("Failed to extract metadata")
@@ -71,7 +98,7 @@ async def generate_pdf(file: UploadFile = File(...)):
 
         # Clean up temporary files
         os.remove(temp_path)
-        os.remove(output_pdf)
+        # os.remove(output_pdf)
 
         return JSONResponse(content={
             "filename": os.path.basename(output_pdf),

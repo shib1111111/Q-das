@@ -118,10 +118,14 @@
         <!-- Parameters -->
         <div class="mb-5">
             <!-- Scatter Plot -->
-            <div class="plotly-chart">
-                {{ param.plot_html|safe if param.plot_html else '<p>No chart available</p>' }}
-            </div>
 
+            <div class="plotly-chart">
+                {% if param.plot_image %}
+                    <img src="file:///{{ param.plot_image|replace('\\', '/') }}" alt="Scatter Plot for {{ param_name }}">
+                {% else %}
+                    <p>No chart available</p>
+                {% endif %}
+            </div>
             <!-- Statistical Table -->
             <table class="stats-table">
                 <tr>

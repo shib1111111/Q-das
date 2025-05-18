@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from typing import List, Dict, Union, Optional
 from datetime import datetime
 import os
+import matplotlib.pyplot as plt
  
 # Utility Functions
 def compute_process_capability(mean, std, usl, lsl, sample_size):
@@ -150,76 +151,6 @@ def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06
             'cp_target': cp_target, 'cpk_target': cpk_target
         }
 
-# def create_scatter_plot(param_name, measurements, stats, usl, lsl, output_dir="plots"):
-#     """Create and save a Plotly scatter plot for measurements."""
-#     try:
-#         if not os.path.exists(output_dir):
-#             os.makedirs(output_dir)
-
-#         fig = go.Figure()
-#         x = list(range(1, len(measurements) + 1))
-#         ranges = [
-#             (lsl, stats['mean'] - 3 * stats['std'], 'red', 'Below -3σ'),
-#             (stats['mean'] - 3 * stats['std'], stats['mean'] + 3 * stats['std'], 'green', 'Within ±3σ'),
-#             (stats['mean'] + 3 * stats['std'], usl, 'blue', 'Above +3σ')
-#         ]
-#         out_of_spec_color = 'purple'
-
-#         for i, measurement in enumerate(measurements):
-#             color = out_of_spec_color
-#             legend = 'Out of Spec'
-#             if measurement < lsl or measurement > usl:
-#                 color = out_of_spec_color
-#             else:
-#                 for lower, upper, range_color, range_legend in ranges:
-#                     if lower <= measurement <= upper:
-#                         color = range_color
-#                         legend = range_legend
-#                         break
-#             fig.add_trace(go.Scatter(
-#                 x=[i + 1], y=[measurement], mode='markers',
-#                 marker=dict(color=color, size=8), name=legend,
-#                 showlegend=(i == 0) or (fig.data[-1].name != legend)
-#             ))
-
-#         fig.add_trace(go.Scatter(
-#             x=x, y=measurements, mode='lines', line=dict(color='black', width=1),
-#             name='Measurements', showlegend=True
-#         ))
-
-#         dash_mapping = {
-#             ':': 'dot',
-#             '--': 'dash',
-#             '-.': 'dashdot',
-#             '-': 'solid'
-#         }
-#         line_configs = [
-#             ('USL', usl, 'purple', ':', 'USL'),
-#             ('x̄ + 3s', stats['mean'] + 3 * stats['std'], 'orange', '--', 'x̄ + 3s'),
-#             ('x̄', stats['mean'], 'blue', '-.', 'x̄'),
-#             ('x̄ - 3s', stats['mean'] - 3 * stats['std'], 'orange', '--', 'x̄ - 3s'),
-#             ('LSL', lsl, 'purple', ':', 'LSL')
-#         ]
-#         for label, y_value, color, dash, text in line_configs:
-#             plotly_dash = dash_mapping.get(dash, 'solid')
-#             fig.add_shape(type="line", x0=1, x1=len(measurements), y0=y_value, y1=y_value,
-#                           line=dict(color=color, width=2, dash=plotly_dash))
-#             fig.add_annotation(x=len(measurements), y=y_value, text=text, showarrow=False,
-#                                xanchor="left", yanchor="middle", font=dict(color=color, size=10))
-
-#         fig.update_layout(
-#             title=f'Value Chart for {param_name}', xaxis_title='Value No.', yaxis_title=param_name,
-#             yaxis=dict(range=[lsl - 0.1, usl + 0.1]), showlegend=True,
-#             margin=dict(r=150), width=800, height=600
-#         )
-
-#         plot_path = os.path.join(output_dir, f'value_chart_{param_name.replace(" ", "_")}.html')
-#         fig.write_html(plot_path)
-#         return plot_path
-#     except Exception as e:
-#         print(f"Error creating scatter plot for '{param_name}': {e}")
-#         return None
-
 def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[str, float],usl: float,lsl: float) -> Optional[str]:
     try:
         # Input validation
@@ -320,8 +251,11 @@ def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[st
         )
 
         # Generate HTML string
-        plot_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-        return plot_html
+        # plot_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+        temp_image = f"temp_plot_{param_name}.png"
+        plt.savefig(temp_image, dpi=150)
+        plt.close()
+        return os.path.abspath(temp_image)
 
     except ValueError as ve:
         print(f"Validation error in create_scatter_plot for '{param_name}': {ve}")
@@ -421,7 +355,7 @@ def analyze_inspection_data(file_path):
 
             stats = calculate_statistics(param_data['measurements'], usl, lsl)
             param_data.update(stats)
-            param_data['plot_html'] = create_scatter_plot(param_name, param_data['measurements'], stats, usl, lsl)
+            param_data['plot_image'] = create_scatter_plot(param_name, param_data['measurements'], stats, usl, lsl)
             parameter_info[param_name] = param_data
 
         except Exception as e:
@@ -433,7 +367,7 @@ def analyze_inspection_data(file_path):
 # # Example Usage
 # if __name__ == "__main__":
 #     try:
-#         metadata, parameter_info = analyze_inspection_data('DI REPORT OF DISC SEPERATOR.xlsx')
+#         metadata, parameter_info = analyze_inspection_data('C:\Users\shib kumar saraf\Downloads\Q-das\server\app_utils\DI REPORT OF DISC SEPERATOR.xlsx')
 #         print("Metadata:", metadata)
 #         for param, info in parameter_info.items():
 #             print(f"\nParameter: {param}")

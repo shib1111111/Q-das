@@ -17,3 +17,4 @@ app.include_router(api_router)
 @app.get("/")
 async def root():
     return {"message": "Welcome to the MCA/CMM Report Generator API"}
+ 

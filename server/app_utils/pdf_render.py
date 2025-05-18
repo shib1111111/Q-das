@@ -3,10 +3,15 @@ import pdfkit
 from datetime import datetime
 import pytz
 import os
+path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 def render_report_to_pdf(metadata: dict, parameter_info: dict, output_pdf: str = 'temp_file/mca_cmm_report.pdf') -> str:
     try:
-        env = Environment(loader=FileSystemLoader('templates'))
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # print(f"Current directory: {current_dir}")
+        template_dir = os.path.join(current_dir,'templates')
+        env = Environment(loader=FileSystemLoader(template_dir))        
         template = env.get_template('empty_reporting.html')
 
         ist = pytz.timezone('Asia/Kolkata')
@@ -45,7 +50,7 @@ def render_report_to_pdf(metadata: dict, parameter_info: dict, output_pdf: str =
         if os.path.dirname(output_pdf):
             os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
 
-        pdfkit.from_file(temp_html, output_pdf, options=options)
+        pdfkit.from_file(temp_html, output_pdf, options=options,configuration=config)
 
         if os.path.exists(temp_html):
             os.remove(temp_html)
