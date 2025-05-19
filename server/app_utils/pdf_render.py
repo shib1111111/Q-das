@@ -3,15 +3,12 @@ import pdfkit
 from datetime import datetime
 import pytz
 import os
-path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
-config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 def render_report_to_pdf(metadata: dict, parameter_info: dict, output_pdf: str = 'temp_file/mca_cmm_report.pdf') -> str:
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        # print(f"Current directory: {current_dir}")
-        template_dir = os.path.join(current_dir,'templates')
-        env = Environment(loader=FileSystemLoader(template_dir))        
+        template_dir = os.path.join(current_dir, 'templates')
+        env = Environment(loader=FileSystemLoader(template_dir))
         template = env.get_template('empty_reporting.html')
 
         ist = pytz.timezone('Asia/Kolkata')
@@ -21,6 +18,8 @@ def render_report_to_pdf(metadata: dict, parameter_info: dict, output_pdf: str =
         temp_html = 'temp_report.html'
         combined_html = ""
 
+        total_pages = len(parameter_info)
+        logo_path = os.path.abspath(os.path.join(current_dir, 'static', 'cdac_logo.png'))
         for index, (param_name, param) in enumerate(parameter_info.items(), 1):
             html_content = template.render(
                 metadata=metadata,
@@ -29,28 +28,37 @@ def render_report_to_pdf(metadata: dict, parameter_info: dict, output_pdf: str =
                 current_date=current_date,
                 current_datetime=current_datetime,
                 page_number=index,
-                total_pages=len(parameter_info)
+                total_pages=total_pages,
+                logo_path=f"file://{logo_path}"
             )
-            combined_html += html_content + '<div style="page-break-after: always;"></div>'
+            combined_html += html_content
+            # Add page break only if this is not the last page
+            if index < total_pages:
+                combined_html += '<div style="page-break-after: always;"></div>'
 
-        with open(temp_html, 'w', encoding='utf-8') as f:
-            f.write(combined_html)
+        try:
+            with open(temp_html, 'w', encoding='utf-8') as f:
+                f.write(combined_html)
+        except IOError as e:
+            raise Exception(f"Error writing temporary HTML file: {str(e)}")
 
         options = {
             'page-size': 'A4',
-            'margin-top': '20mm',
-            'margin-bottom': '20mm',
-            'margin-left': '20mm',
-            'margin-right': '20mm',
+            'margin-top': '10mm',    # 1 cm
+            'margin-bottom': '10mm', # 1 cm
+            'margin-left': '10mm',   # 1 cm
+            'margin-right': '10mm',  # 1 cm
             'encoding': 'UTF-8',
+            'dpi': 300,
             'enable-local-file-access': ''
         }
 
-        # ✅ Ensure output directory exists
+        # Ensure output directory exists
         if os.path.dirname(output_pdf):
             os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
 
-        pdfkit.from_file(temp_html, output_pdf, options=options,configuration=config)
+        # Use the confirmed wkhtmltopdf path
+        pdfkit.from_file(temp_html, output_pdf, options=options)
 
         if os.path.exists(temp_html):
             os.remove(temp_html)

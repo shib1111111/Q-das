@@ -2,12 +2,14 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 from statsmodels.stats.diagnostic import normal_ad
-import plotly.graph_objects as go
 from typing import List, Dict, Union, Optional
 from datetime import datetime
 import os
+import base64
+import io
 import matplotlib.pyplot as plt
- 
+
+
 # Utility Functions
 def compute_process_capability(mean, std, usl, lsl, sample_size):
     """Compute Cp and Cpk indices with confidence intervals."""
@@ -88,7 +90,7 @@ def determine_best_distribution(measurements):
         print(f"Error determining distribution: {e}")
         return {'distribution': 'Normal', 'p_value': 1.0, 'method': 'Anderson-Darling'}
 
-def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06):
+def calculate_statistics(measurements, usl, lsl, cp_target=1.33, cpk_target=1.33):
     """Calculate statistical metrics for measurements."""
     try:
         sample_size = len(measurements)
@@ -99,14 +101,16 @@ def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06
         max_val = np.max(measurements)
         range_val = max_val - min_val
         percentiles = {
-            'p0.135': np.percentile(measurements, 0.135),
+            'p0_135': np.percentile(measurements, 0.135),
             'p50': np.percentile(measurements, 50),
-            'p99.865': np.percentile(measurements, 99.865)
+            'p99_865': np.percentile(measurements, 99.865)
         }
         n_below_lsl = np.sum(np.array(measurements) < lsl)
         n_above_usl = np.sum(np.array(measurements) > usl)
+        n_within_tolerance = np.sum((measurements >= lsl) & (measurements <= usl))
         p_below_lsl = (n_below_lsl / sample_size) * 100 if sample_size > 0 else 0
         p_above_usl = (n_above_usl / sample_size) * 100 if sample_size > 0 else 0
+        p_within_tolerance = (n_within_tolerance/ sample_size) * 100 if sample_size > 0 else 0
         capability = compute_process_capability(mean, std, usl, lsl, sample_size)
         distribution = determine_best_distribution(measurements)
         cp_requirements_met = capability['Cp'] >= cp_target
@@ -117,10 +121,10 @@ def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06
             'sample_size': sample_size, 'effective_sample_size': sample_size,
             'mean': mean, 'median': median, 'std': std,
             'min': min_val, 'max': max_val, 'range': range_val,
-            'percentile_0.135': percentiles['p0.135'], 'percentile_50': percentiles['p50'],
-            'percentile_99.865': percentiles['p99.865'],
-            'n_below_lsl': n_below_lsl, 'n_above_usl': n_above_usl,
-            'p_below_lsl': p_below_lsl, 'p_above_usl': p_above_usl,
+            'percentile_0_135': percentiles['p0_135'], 'percentile_50': percentiles['p50'],
+            'percentile_99_865': percentiles['p99_865'],
+            'n_below_lsl': n_below_lsl, 'n_above_usl': n_above_usl,'n_within_tolerance':n_within_tolerance,
+            'p_below_lsl': p_below_lsl, 'p_above_usl': p_above_usl,'p_within_tolerance':p_within_tolerance,
             'Cp': capability['Cp'], 'Cpk': capability['Cpk'],
             'Cp_lower': capability['Cp_lower'], 'Cp_upper': capability['Cp_upper'],
             'Cpk_lower': capability['Cpk_lower'], 'Cpk_upper': capability['Cpk_upper'],
@@ -138,9 +142,9 @@ def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06
             'sample_size': 0, 'effective_sample_size': 0,
             'mean': 0, 'median': 0, 'std': 0,
             'min': 0, 'max': 0, 'range': 0,
-            'percentile_0.135': 0, 'percentile_50': 0, 'percentile_99.865': 0,
-            'n_below_lsl': 0, 'n_above_usl': 0,
-            'p_below_lsl': 0, 'p_above_usl': 0,
+            'percentile_0_135': 0, 'percentile_50': 0, 'percentile_99_865': 0,
+            'n_below_lsl': 0, 'n_above_usl': 0,'n_within_tolerance':0,
+            'p_below_lsl': 0, 'p_above_usl': 0,'p_within_tolerance':0,
             'Cp': float('inf'), 'Cpk': float('inf'),
             'Cp_lower': float('inf'), 'Cp_upper': float('inf'),
             'Cpk_lower': float('inf'), 'Cpk_upper': float('inf'),
@@ -151,7 +155,7 @@ def calculate_statistics(measurements, usl, lsl, cp_target=2.06, cpk_target=2.06
             'cp_target': cp_target, 'cpk_target': cpk_target
         }
 
-def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[str, float],usl: float,lsl: float) -> Optional[str]:
+def create_scatter_plot(param_name: str, measurements: List[float], stats: Dict[str, float], usl: float, lsl: float, dpi: int = 300) -> Optional[str]:
     try:
         # Input validation
         if not param_name or not isinstance(param_name, str):
@@ -170,48 +174,41 @@ def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[st
             raise ValueError("lsl must be less than usl")
         if stats['std'] < 0:
             raise ValueError("standard deviation cannot be negative")
+        if dpi < 72 or dpi > 1200:  # Reasonable DPI bounds
+            raise ValueError("DPI must be between 72 and 1200")
 
-        # Initialize Plotly figure
-        fig = go.Figure()
-        x = list(range(1, len(measurements) + 1))
+        # Set up figure
+        plt.figure(figsize=(15, 6), dpi=dpi)
+        plt.grid(True, linestyle='--', alpha=0.7)
+
+        # Prepare data
+        x = np.arange(1, len(measurements) + 1)
+        measurements = np.array(measurements)
 
         # Define ranges for coloring points
         ranges = [
-            (lsl, stats['mean'] - 3 * stats['std'], 'red', 'Below -3σ'),
-            (stats['mean'] - 3 * stats['std'], stats['mean'] + 3 * stats['std'], 'green', 'Within ±3σ'),
-            (stats['mean'] + 3 * stats['std'], usl, 'blue', 'Above +3σ')
+            (lsl, stats['mean'] - 3 * stats['std'], 'red'),
+            (stats['mean'] - 3 * stats['std'], stats['mean'] + 3 * stats['std'], 'green'),
+            (stats['mean'] + 3 * stats['std'], usl, 'blue')
         ]
         out_of_spec_color = 'purple'
 
-        # Add scatter points with appropriate colors and legends
-        legend_shown = set()
-        for i, measurement in enumerate(measurements):
-            color = out_of_spec_color
-            legend = 'Out of Spec'
-            if measurement < lsl or measurement > usl:
-                color = out_of_spec_color
+        # Assign colors
+        colors = []
+        for m in measurements:
+            if m < lsl or m > usl:
+                colors.append(out_of_spec_color)
             else:
-                for lower, upper, range_color, range_legend in ranges:
-                    if lower <= measurement <= upper:
-                        color = range_color
-                        legend = range_legend
+                for lower, upper, color in ranges:
+                    if lower <= m <= upper:
+                        colors.append(color)
                         break
-            show_legend = legend not in legend_shown
-            if show_legend:
-                legend_shown.add(legend)
-            fig.add_trace(go.Scattergl(
-                x=[i + 1], y=[measurement], mode='markers',
-                marker=dict(color=color, size=8), name=legend,
-                showlegend=show_legend
-            ))
 
-        # Define line styles for specification and control limits
-        dash_mapping = {
-            ':': 'dot',
-            '--': 'dash',
-            '-.': 'dashdot',
-            '-': 'solid'
-        }
+        # Plot scatter points without legend
+        for x_val, y_val, color in zip(x, measurements, colors):
+            plt.scatter(x_val, y_val, c=color, s=50, zorder=5)
+
+        # Add horizontal lines
         line_configs = [
             ('USL', usl, 'purple', ':', 'USL'),
             ('x̄ + 3s', stats['mean'] + 3 * stats['std'], 'orange', '--', 'x̄ + 3s'),
@@ -220,42 +217,28 @@ def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[st
             ('LSL', lsl, 'purple', ':', 'LSL')
         ]
 
-        # Add horizontal lines for specification and control limits
-        for label, y_value, color, dash, text in line_configs:
-            plotly_dash = dash_mapping.get(dash, 'solid')
-            fig.add_shape(
-                type="line",
-                x0=1, x1=len(measurements), y0=y_value, y1=y_value,
-                line=dict(color=color, width=2, dash=plotly_dash)
-            )
-            fig.add_annotation(
-                x=len(measurements), y=y_value, text=text, showarrow=False,
-                xanchor="left", yanchor="middle", font=dict(color=color, size=10)
-            )
+        for _, y_value, color, linestyle, label in line_configs:
+            plt.axhline(y=y_value, color=color, linestyle=linestyle, linewidth=2, zorder=3)
+            plt.text(len(measurements) + 0.2, y_value, label, color=color, va='center', fontsize=10)
 
-        # Calculate y-axis range with padding (fixed typo: '0 Appleton1' to '0.1')
-        y_range_padding = 0.1 * (usl - lsl)  # 10% padding
-        y_min = min(lsl, min(measurements)) - y_range_padding
-        y_max = max(usl, max(measurements)) + y_range_padding
+        # Calculate y-axis range
+        y_range_padding = 0.1 * (usl - lsl)
+        y_min = min(lsl, measurements.min()) - y_range_padding
+        y_max = max(usl, measurements.max()) + y_range_padding
 
-        # Update layout
-        fig.update_layout(
-            title=f'Value Chart for {param_name}',
-            xaxis_title='Value No.',
-            yaxis_title=param_name,
-            yaxis=dict(range=[y_min, y_max]),
-            showlegend=True,
-            margin=dict(r=150),
-            width=800,
-            height=600
-        )
+        # Customize plot
+        plt.title(f'Value Chart for {param_name}', fontsize=14, pad=10)
+        plt.xlabel('Value No.', fontsize=12)
+        plt.ylabel(param_name, fontsize=12)
+        plt.xlim(0.5, len(measurements) + 1.5)
+        plt.ylim(y_min, y_max)
 
-        # Generate HTML string
-        # plot_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-        temp_image = f"temp_plot_{param_name}.png"
-        plt.savefig(temp_image, dpi=150)
+        # Generate base64-encoded PNG
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', transparent=False)
         plt.close()
-        return os.path.abspath(temp_image)
+        img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f"data:image/png;base64,{img_base64}"
 
     except ValueError as ve:
         print(f"Validation error in create_scatter_plot for '{param_name}': {ve}")
@@ -266,7 +249,7 @@ def create_scatter_plot(param_name: str,measurements: List[float],stats: Dict[st
     except Exception as e:
         print(f"Unexpected error in create_scatter_plot for '{param_name}': {e}")
         return None
-
+    
 def parse_metadata(df):
     """Parse metadata from the Excel dataframe."""
     try:

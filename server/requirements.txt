@@ -10,3 +10,4 @@ statsmodels
 plotly
 python-multipart
 openpyxl
+matplotlib

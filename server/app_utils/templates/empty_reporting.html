@@ -4,54 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCA/CMM Report</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         @page {
             size: A4;
-            margin: 20mm;
         }
         body {
             font-family: 'Courier New', Courier, monospace;
             width: 210mm;
-            min-height: 297mm;
+            height: 297mm;
             margin: 0 auto;
             padding: 20mm;
             box-sizing: border-box;
         }
-        .header-table {
-            width: 100%;
-            font-size: 10pt;
+        .header-container {
+            display: flex;
+            align-items: center;
             margin-bottom: 20px;
         }
-        .header-table td {
-            padding: 3px;
-            vertical-align: top;
+        .logo-section {
+            display: flex;
+            align-items: center;
+            font-size: 14pt;
+            font-weight: bold;
+        }
+        .logo-section img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            display: block;
         }
         .header-title {
             font-size: 24pt;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 10px;
+            flex-grow: 1;
         }
-        .plotly-chart {
+        .header-table {
+            width: 100%;
+            font-size: 10pt;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #6e6d6d;
+            background-color: #f9f9f9;
+            border-collapse: collapse;
+        }
+        .header-table td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .evaluation-line {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .scatter-chart {
             width: 100%;
             height: 400px;
             margin: 20px 0;
+            border: 1px solid #ccc;
         }
         .stats-table {
             width: 100%;
             font-size: 10pt;
+            margin-bottom: 20px;
         }
         .stats-table td {
             padding: 6px;
             vertical-align: top;
-        }
-        .section-title {
-            font-size: 12pt;
-            font-weight: bold;
-            margin-top: 20px;
-            margin-bottom: 10px;
         }
         .analysis-section p {
             font-size: 10pt;
@@ -59,130 +78,140 @@
         }
         .arrow-up {
             color: green;
+            font-size: 18pt;
+            font-weight: bold;
         }
         .arrow-down {
             color: red;
+            font-size: 18pt;
+            font-weight: bold;
         }
-        .footer {
+        .report-footer {
             font-size: 9pt;
             margin-top: 20px;
             text-align: center;
         }
+        .bold-label {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <!-- Header -->
-        <div class="header-title">CDAC CHENNAI MCA/CMM Reporting</div>
+    <div class="report-container">
+        <!-- Header with Logo and Title -->
+        <div class="header-container">
+            <div class="logo-section">
+                <img src="{{ logo_path }}" alt="CDAC Logo">
+                CDAC CHENNAI
+            </div>
+            <div class="header-title">MCA/CMM Reporting</div>
+        </div>
+
+        <!-- Header Table -->
         <table class="header-table">
             <tr>
-                <td style="width: 25%;">
-                    <div>Op.Name: {{ metadata.Operation_Name }}</div>
-                    <div>Part no: {{ metadata.Part_Number }}</div>
-                    <div>Part descr: {{ metadata.Part_Description }}</div>
-                    <div>Char.No: {{ param.char_number|default('N/A') }}</div>
-                    <div>Char.Class: {{ param.char_class|default('N/A') }}</div>
-                    <div>Nom.val: {{ param.Nominal_Value|default('N/A') }}</div>
-                    <div>Char.Remark: </div>
+                <td style="width: 33%;">
+                    <div><span class="bold-label">Op.Name:</span> {{ metadata.Operation_Name }}</div>
+                    <div><span class="bold-label">Part no:</span> {{ metadata.Part_Number }}</div>
+                    <div><span class="bold-label">Part descr:</span> {{ metadata.Part_Description }}</div>
+                    <div><span class="bold-label">Char.No:</span> {{ param.char_number|default('N/A') }}</div>
+                    <div><span class="bold-label">Char.Class:</span> {{ param.char_class|default('N/A') }}</div>
+                    <div><span class="bold-label">Nom.val:</span> {{ '%.3f' % param.Nominal_Value if param.Nominal_Value is not none else 'N/A' }}</div>
+                    <div><span class="bold-label">Char.Remark:</span> </div>
                 </td>
-                <td style="width: 25%;">
-                    <div>Evaluation from {{ param.evaluation_starttime|default('N/A') }} to {{ param.evaluation_endtime|default('N/A') }}</div>
-                    <div>OP no: {{ metadata.Operation_Number }}</div>
-                    <div>&nbsp;</div>
-                    <div>Char.Descr: {{ param.char_descr|default('N/A') }}</div>
-                    <div>Calc.Tol: {{ param.Tolerance|default('N/A') }}</div>
-                    <div>Unit: </div>
-                    <div>&nbsp;</div>
+        
+                <td style="width: 33%;" rowspan="2">
+                    <div class="evaluation-line" style="margin-bottom: 8px;">
+                        <span class="bold-label">Evaluation:</span><br>
+                        from {{ param.evaluation_starttime|default('N/A') }}<br>
+                        to {{ param.evaluation_endtime|default('N/A') }}
+                    </div>
+                    <div><span class="bold-label">OP no:</span> {{ metadata.Operation_Number }}</div>
+                    <div><span class="bold-label">Char.Descr:</span> {{ param.char_descr|default('N/A') }}</div>
+                    <div><span class="bold-label">Calc.Tol:</span> {{ '%.3f' % param.Tolerance if param.Tolerance is not none else 'N/A' }}</div>
+                    <div><span class="bold-label">Unit:</span> </div>
+                    <div><span class="bold-label">USL:</span> {{ '%.3f' % param.USL if param.USL is not none else 'N/A' }}</div>
+                    <div><span class="bold-label">LSL:</span> {{ '%.3f' % param.LSL if param.LSL is not none else 'N/A' }}</div>
                 </td>
-                <td style="width: 25%;">
-                    <div>&nbsp;</div>
-                    <div>&nbsp;</div>
-                    <div>&nbsp;</div>
-                    <div>&nbsp;</div>
-                    <div>USL: {{ param.USL|default('N/A') }}</div>
-                    <div>LSL: {{ param.LSL|default('N/A') }}</div>
-                    <div>&nbsp;</div>
+        
+                <td style="width: 33%;">
+                    <div><span class="bold-label">Date:</span> {{ current_date }} <span class="bold-label">Page:</span>{{ page_number }}/{{ total_pages }}</div>
+                    <div> </div>
+                    <div><span class="bold-label">Drw.No:</span> {{ metadata.Drawing_Number }}</div>
+                    <div><span class="bold-label">Mach.Descr:</span> {{ metadata.mach_descr }}</div>
+                    <div><span class="bold-label">Subgr.size:</span> {{ param.Subgroup_Size|default('N/A') }}</div>
+                    <div><span class="bold-label">Subgr.type:</span> {{ param.Subgroup_Type|default('N/A') }}</div>
+                    <div> </div>
                 </td>
-                <td style="width: 25%;">
-                    <div>Date: {{ current_datetime }} Page: {{ page_number }}</div>
-                    <div>&nbsp;</div>
-                    <div>Drw.No: {{ metadata.Drawing_Number }}</div>
-                    <div>Mach.Descr: {{ metadata.mach_descr }}</div>
-                    <div>Subgr.size: {{ param.Subgroup_Size|default('N/A') }}</div>
-                    <div>Subgr.type: {{ param.Subgroup_Type|default('N/A') }}</div>
-                    <div>&nbsp;</div>
+            </tr>
+        </table>
+        
+        <!-- Scatter Plot -->
+        <div class="scatter-chart">
+            {% if param.plot_image %}
+                <img src="{{ param.plot_image }}" alt="Scatter Plot" style="width: 100%; height: 100%; object-fit: contain;">
+            {% else %}
+                <p style="text-align: center; padding-top: 180px;">No chart available</p>
+            {% endif %}
+        </div>
+        
+        <!-- Statistical Table -->
+        <table class="stats-table">
+            <tr>
+                <td style="width: 33%;">
+                    <strong>Drawing Values</strong><br>
+                    <span class="bold-label">Tm</span> = {{ '%.3f'|format(param.Nominal_Value) if param.Nominal_Value is defined and param.Nominal_Value is not none else 'N/A' }}<br>
+                    <span class="bold-label">LSL</span> = {{ '%.3f'|format(param.LSL) if param.LSL is defined and param.LSL is not none else 'N/A' }}<br>
+                    <span class="bold-label">USL</span> = {{ '%.3f'|format(param.USL) if param.USL is defined and param.USL is not none else 'N/A' }}<br>
+                    <span class="bold-label">T</span> = {{ '%.3f'|format(param.Tolerance) if param.Tolerance is defined and param.Tolerance is not none else 'N/A' }}<br>
+                    <span class="bold-label">Char.Class</span> = {{ param.char_class|default('N/A') }}
+                </td>
+                <td style="width: 33%;">
+                    <strong>Collected Values</strong><br>
+                    <span class="bold-label">x̃</span> = {{ '%.4f'|format(param.median) if param.median is defined and param.median is not none else 'N/A' }}<br>
+                    <span class="bold-label">x<sub>min</sub></span> = {{ '%.3f'|format(param.min) if param.min is defined and param.min is not none else 'N/A' }}<br>
+                    <span class="bold-label">x<sub>max</sub></span> = {{ '%.3f'|format(param.max) if param.max is defined and param.max is not none else 'N/A' }}<br>
+                    <span class="bold-label">R</span> = {{ '%.3f'|format(param.range) if param.range is defined and param.range is not none else 'N/A' }}<br>
+                    <span class="bold-label">n<sub>eff</sub></span> = {{ param.effective_sample_size|default('N/A') }}<br>
+                    <span class="bold-label">n<sub>tot</sub></span> = {{ param.sample_size|default('N/A') }}<br>
+                    <span class="bold-label">n<sub><T></sub></span> = {{ param.n_within_tolerance|default('N/A') }}<br>
+                    <span class="bold-label">n<sub>USL</sub></span> = {{ param.n_above_usl|default('N/A') }}<br>
+                    <span class="bold-label">n<sub>LSL</sub></span> = {{ param.n_below_lsl|default('N/A') }}
+                </td>
+                <td style="width: 33%;">
+                    <strong>Statistics</strong><br>
+                    <span class="bold-label">x̄</span> = {{ '%.5f'|format(param.mean) if param.mean is defined and param.mean is not none else 'N/A' }}<br>
+                    <span class="bold-label">s</span> = {{ '%.3f'|format(param.std) if param.std is defined and param.std is not none else 'N/A' }}<br>
+                    <span class="bold-label">x<sub>50%</sub></span> = {{ '%.5f'|format(param.percentile_50) if param.percentile_50 is defined and param.percentile_50 is not none else 'N/A' }}<br>
+                    <span class="bold-label">x<sub>0.135%</sub></span> = {{ '%.5f'|format(param.percentile_0_135) if param.percentile_0_135 is defined and param.percentile_0_135 is not none else 'N/A' }}<br>
+                    <span class="bold-label">x<sub>99.865%</sub></span> = {{ '%.5f'|format(param.percentile_99_865) if param.percentile_99_865 is defined and param.percentile_99_865 is not none else 'N/A' }}<br>
+                    <span class="bold-label">6s</span> = {{ '%.5f'|format(param.std * 6) if param.std is defined and param.std is not none else 'N/A' }}<br>
+                    <span class="bold-label">p<sub><T></sub></span> = {{ '%.5f%%'|format(param.p_within_tolerance) if param.p_within_tolerance is defined and param.p_within_tolerance is not none else 'N/A' }}<br>
+                    <span class="bold-label">p<sub>USL</sub></span> = {{ '%.5f%%'|format(param.p_above_usl) if param.p_above_usl is defined and param.p_above_usl is not none else 'N/A' }}<br>
+                    <span class="bold-label">p<sub>LSL</sub></span> = {{ '%.5f%%'|format(param.p_below_lsl) if param.p_below_lsl is defined and param.p_below_lsl is not none else 'N/A' }}
                 </td>
             </tr>
         </table>
 
-        <!-- Parameters -->
-        <div class="mb-5">
-            <!-- Scatter Plot -->
+        <!-- Analysis Section -->
+        <div class="analysis-section">
+            <p><span class="bold-label">Anderson-Darling test:</span> {% if param.distribution_p_value is defined and param.distribution_p_value is not none %}{{ 'H1 : subgroup is not derived from a Normal distribution' if param.distribution_p_value < 0.05 else 'H0 : subgroup is derived from a Normal distribution' }}{% else %}N/A{% endif %}</p>
+            <p><span class="bold-label">p value:</span> {{ '%.4f'|format(param.distribution_p_value) if param.distribution_p_value is defined and param.distribution_p_value is not none else 'N/A' }}</p>
+            <p><span class="bold-label">Distribution:</span> {{ param.distribution_name|default('N/A') }} Distribution</p>
+            <p><span class="bold-label">Calculation Methods:</span> M2,1 percentile (0.135%-50%-99.865%)</p>
 
-            <div class="plotly-chart">
-                {% if param.plot_image %}
-                    <img src="file:///{{ param.plot_image|replace('\\', '/') }}" alt="Scatter Plot for {{ param_name }}">
-                {% else %}
-                    <p>No chart available</p>
-                {% endif %}
-            </div>
-            <!-- Statistical Table -->
-            <table class="stats-table">
-                <tr>
-                    <td style="width: 33%;">
-                        <strong>Drawing Values</strong><br>
-                        Tm = {{ '%.6f'|format(param.Nominal_Value) if param.Nominal_Value is number else 'N/A' }}<br>
-                        LSL = {{ '%.6f'|format(param.LSL) if param.LSL is number else 'N/A' }}<br>
-                        USL = {{ '%.6f'|format(param.USL) if param.USL is number else 'N/A' }}<br>
-                        T = {{ '%.6f'|format(param.Tolerance) if param.Tolerance is number else 'N/A' }}<br>
-                        Char.Class = {{ param.char_class|default('N/A') }}
-                    </td>
-                    <td style="width: 33%;">
-                        <strong>Collected Values</strong><br>
-                        x̃ = {{ '%.6f'|format(param.median) if param.median is number else 'N/A' }}<br>
-                        x<sub>min</sub> = {{ '%.6f'|format(param.min) if param.min is number else 'N/A' }}<br>
-                        x<sub>max</sub> = {{ '%.6f'|format(param.max) if param.max is number else 'N/A' }}<br>
-                        R = {{ '%.6f'|format(param.range) if param.range is number else 'N/A' }}<br>
-                        n<sub>eff</sub> = {{ param.effective_sample_size|default('N/A') }}<br>
-                        n<sub>tot</sub> = {{ param.sample_size|default('N/A') }}<br>
-                        n<sub><T></sub> = {{ param.n_within_tolerance|default('N/A') }}<br>
-                        n<sub>USL</sub> = {{ param.n_above_usl|default('N/A') }}<br>
-                        n<sub>LSL</sub> = {{ param.n_below_lsl|default('N/A') }}
-                    </td>
-                    <td style="width: 33%;">
-                        <strong>Statistics</strong><br>
-                        x̄ = {{ '%.6f'|format(param.mean) if param.mean is number else 'N/A' }}<br>
-                        s = {{ '%.6f'|format(param.std) if param.std is number else 'N/A' }}<br>
-                        x<sub>50%</sub> = {{ '%.6f'|format(param.percentile_50) if param.percentile_50 is number else 'N/A' }}<br>
-                        x<sub>0.135%</sub> = {{ '%.6f'|format(param.percentile_0_135) if param.percentile_0_135 is number else 'N/A' }}<br>
-                        x<sub>99.865%</sub> = {{ '%.6f'|format(param.percentile_99_865) if param.percentile_99_865 is number else 'N/A' }}<br>
-                        6s = {{ '%.6f'|format(param.std * 6) if param.std is number else 'N/A' }}
-                    </td>
-                </tr>
-            </table>
-
-            <!-- Analysis Section -->
-            <div class="analysis-section">
-                <p>Anderson-Darling test: {{ 'H1 : subgroup is not derived from a Normal distribution' if param.distribution_p_value < 0.05 else 'H0 : subgroup is derived from a Normal distribution' }}</p>
-                <p>p value: {{ '%.6f'|format(param.distribution_p_value) if param.distribution_p_value is number else 'N/A' }}</p>
-                <p>Distribution: {{ param.distribution_name|default('N/A') }} Distribution</p>
-                <p>Calculation Methods: M2,1 percentile (0.135%-50%-99.865%)</p>
-
-=                <p>Potential Capability Index (A) Cp: {{ '%.6f'|format(param.Cp_lower) if param.Cp_lower is number else 'N/A' }} <= {{ '%.6f'|format(param.Cp) if param.Cp is number else 'N/A' }} <= {{ '%.6f'|format(param.Cp_upper) if param.Cp_upper is number else 'N/A' }} <span class="{{ 'arrow-up' if param.cp_requirements_met else 'arrow-down' if param.Cp is number else '' }}">{{ '↑' if param.cp_requirements_met else '↓' if param.Cp is number else '' }}</span></p>
-                <p>Critical Capability Index (A) Cpk: {{ '%.6f'|format(param.Cpk_lower) if param.Cpk_lower is number else 'N/A' }} <= {{ '%.6f'|format(param.Cpk) if param.Cpk is number else 'N/A' }} <= {{ '%.6f'|format(param.Cpk_upper) if param.Cpk_upper is number else 'N/A' }} <span class="{{ 'arrow-up' if param.cpk_requirements_met else 'arrow-down' if param.Cpk is number else '' }}">{{ '↑' if param.cpk_requirements_met else '↓' if param.Cpk is number else '' }}</span></p>
-                <p>Demand Potential Capability Index (A) Cp target: {{ '%.2f'|format(param.cp_target) if param.cp_target is number else 'N/A' }}</p>
-                <p>Demand Critical Capability Index (A) Cpk target: {{ '%.2f'|format(param.cpk_target) if param.cpk_target is number else 'N/A' }}</p>
-                <p class="fw-bold">{{ 'Requirements were met (Cp, Cpk, LV)' if param.requirements_met else 'Requirements were not met (Cp, Cpk, LV)' }} <span class="{{ 'arrow-up' if param.requirements_met else 'arrow-down' }}">{{ '↑' if param.requirements_met else '↓' }}</span></p>
-            </div>
-
-            <p class="text-muted small">Page {{ page_number }} of {{ total_pages }}</p>
+            <p><span class="bold-label">Potential Capability Index (A) Cp:</span> {{ '%.2f'|format(param.Cp_lower) if param.Cp_lower is defined and param.Cp_lower is not none else 'N/A' }} <= {{ '%.2f'|format(param.Cp) if param.Cp is defined and param.Cp is not none else 'N/A' }} <= {{ '%.2f'|format(param.Cp_upper) if param.Cp_upper is defined and param.Cp_upper is not none else 'N/A' }} <span class="{{ 'arrow-up' if param.cp_requirements_met else 'arrow-down' if param.Cp is defined and param.Cp is not none else '' }}">{{ '↑' if param.cp_requirements_met else '↓' if param.Cp is defined and param.Cp is not none else '' }}</span></p>
+            <p><span class="bold-label">Critical Capability Index (A) Cpk:</span> {{ '%.2f'|format(param.Cpk_lower) if param.Cpk_lower is defined and param.Cpk_lower is not none else 'N/A' }} <= {{ '%.2f'|format(param.Cpk) if param.Cpk is defined and param.Cpk is not none else 'N/A' }} <= {{ '%.2f'|format(param.Cpk_upper) if param.Cpk_upper is defined and param.Cpk_upper is not none else 'N/A' }} <span class="{{ 'arrow-up' if param.cpk_requirements_met else 'arrow-down' if param.Cpk is defined and param.Cpk is not none else '' }}">{{ '↑' if param.cpk_requirements_met else '↓' if param.Cpk is defined and param.Cpk is not none else '' }}</span></p>
+            <p><span class="bold-label">Demand Potential Capability Index (A) Cp target:</span> {{ '%.2f'|format(param.cp_target) if param.cp_target is defined and param.cp_target is not none else 'N/A' }}</p>
+            <p><span class="bold-label">Demand Critical Capability Index (A) Cpk target:</span> {{ '%.2f'|format(param.cpk_target) if param.cpk_target is defined and param.cpk_target is not none else 'N/A' }}</p>
+            <p style="font-weight: bold;"><span class="bold-label">Status:</span> {{ 'Requirements were met (Cp, Cpk, LV)' if param.requirements_met else 'Requirements were not met (Cp, Cpk, LV)' }} <span class="{{ 'arrow-up' if param.requirements_met else 'arrow-down' }}">{{ '↑' if param.requirements_met else '↓' }}</span></p>
         </div>
-
+        
         <!-- Footer -->
-        <p class="footer">
-            Copyright © QDAS Process Capability ({{ current_date }})<br>
-            Made by CDAC Chennai
-        </p>
+        <div class="report-footer">
+            <div>© Q-DAS Process Capability</div>
+            <div>Made by CDAC Chennai ({{ current_datetime }})</div>
+        </div>
     </div>
 </body>
 </html>

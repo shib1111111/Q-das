@@ -9,6 +9,8 @@ import base64
 import logging
 import numpy as np
 import datetime
+import time
+from functools import wraps
 
 def sanitize_for_json(obj):
     if isinstance(obj, dict):
@@ -27,38 +29,43 @@ def sanitize_for_json(obj):
         except Exception:
             pass
     try:
-        # Try to convert any remaining non-serializable objects to string
         return str(obj)
     except Exception:
-        # Fallback if even str() fails
         return None
-
 
 api_router = APIRouter()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Decorator to measure and log time taken
+def log_time_taken(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = await func(*args, **kwargs)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"API call '{func.__name__}' took {elapsed_time:.4f} seconds")
+        print(f"API call '{func.__name__}' took {elapsed_time:.4f} seconds")  # Also print to console
+        return result
+    return wrapper
 
 def validate_file(file: UploadFile):
     if not file.filename.endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="Only Excel (.xlsx) files are supported.")
 
-
 @api_router.post("/extract-info/")
+@log_time_taken
 async def extract_info(file: UploadFile = File(...)):
     validate_file(file)
 
     try:
-        # Save uploaded file to a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp:
             temp.write(await file.read())
             temp_path = temp.name
 
-        # Analyze data
         metadata, parameter_info = analyze_inspection_data(temp_path)
-
-        # Clean up Excel file
         os.remove(temp_path)
 
         return JSONResponse(content=jsonable_encoder({
@@ -70,35 +77,27 @@ async def extract_info(file: UploadFile = File(...)):
         logger.exception("Failed to extract metadata")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-
 @api_router.post("/generate-pdf/")
+@log_time_taken
 async def generate_pdf(file: UploadFile = File(...)):
     validate_file(file)
 
     try:
-        # Save uploaded file to a temporary location
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp:
             temp.write(await file.read())
             temp_path = temp.name
 
-        # Analyze Excel file
         metadata, parameter_info = analyze_inspection_data(temp_path)
-
-        # Ensure the output directory exists
         output_dir = 'temp_file'
         os.makedirs(output_dir, exist_ok=True)
         output_pdf_path = os.path.join(output_dir, 'mca_cmm_report.pdf')
-
-        # Render PDF
         output_pdf = render_report_to_pdf(metadata, parameter_info, output_pdf=output_pdf_path)
 
-        # Encode PDF as base64
         with open(output_pdf, "rb") as f:
             pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-        # Clean up temporary files
         os.remove(temp_path)
-        # os.remove(output_pdf)
+        # os.remove(output_pdf)  # Commented out in original code, kept as is
 
         return JSONResponse(content={
             "filename": os.path.basename(output_pdf),
