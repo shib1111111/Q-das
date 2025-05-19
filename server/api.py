@@ -98,7 +98,7 @@ async def generate_pdf(file: UploadFile = File(...)):
             pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
 
         os.remove(temp_path)
-        # os.remove(output_pdf)  # Commented out in original code, kept as is
+        os.remove(output_pdf)  # Commented out in original code, kept as is
 
         return JSONResponse(content={
             "filename": os.path.basename(output_pdf),
