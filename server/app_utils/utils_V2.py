@@ -14,6 +14,73 @@ from scipy.stats import norm
 
 
 # Utility Functions
+
+def get_percentiles(measurements: List[float], distribution: Dict[str, Union[str, float, tuple]]) -> Dict[str, float]:
+    dist_name = distribution['distribution']
+    params = distribution['params']
+    
+    # Calculate percentiles based on distribution
+    percentiles = {}
+    min_val = min(measurements)
+    data = measurements - min_val + 1e-6 if min_val <= 0 else measurements  # Shift for Log-Normal, etc.
+    
+    if dist_name == 'Normal' and params is not None:
+        mean, std = params
+        percentiles['p0_135'] = stats.norm.ppf(0.00135, loc=mean, scale=std)
+        percentiles['p50'] = stats.norm.ppf(0.50, loc=mean, scale=std)
+        percentiles['p99_865'] = stats.norm.ppf(0.99865, loc=mean, scale=std)
+    
+    elif dist_name == 'Log-Normal' and params is not None:
+        shape, loc, scale = params
+        percentiles['p0_135'] = stats.lognorm.ppf(0.00135, shape, loc=loc, scale=scale)
+        percentiles['p50'] = stats.lognorm.ppf(0.50, shape, loc=loc, scale=scale)
+        percentiles['p99_865'] = stats.lognorm.ppf(0.99865, shape, loc=loc, scale=scale)
+    
+    elif dist_name == 'Exponential' and params is not None:
+        loc, scale = params
+        percentiles['p0_135'] = stats.expon.ppf(0.00135, loc=loc, scale=scale)
+        percentiles['p50'] = stats.expon.ppf(0.50, loc=loc, scale=scale)
+        percentiles['p99_865'] = stats.expon.ppf(0.99865, loc=loc, scale=scale)
+    
+    elif dist_name == 'Gamma' and params is not None:
+        a, loc, scale = params
+        percentiles['p0_135'] = stats.gamma.ppf(0.00135, a, loc=loc, scale=scale)
+        percentiles['p50'] = stats.gamma.ppf(0.50, a, loc=loc, scale=scale)
+        percentiles['p99_865'] = stats.gamma.ppf(0.99865, a, loc=loc, scale=scale)
+    
+    elif dist_name == 'Weibull' and params is not None:
+        shape, loc, scale = params
+        percentiles['p0_135'] = stats.weibull_min.ppf(0.00135, shape, loc=loc, scale=scale)
+        percentiles['p50'] = stats.weibull_min.ppf(0.50, shape, loc=loc, scale=scale)
+        percentiles['p99_865'] = stats.weibull_min.ppf(0.99865, shape, loc=loc, scale=scale)
+    
+    elif dist_name == 'Rayleigh' and params is not None:
+        loc, scale = params
+        percentiles['p0_135'] = stats.rayleigh.ppf(0.00135, loc=loc, scale=scale)
+        percentiles['p50'] = stats.rayleigh.ppf(0.50, loc=loc, scale=scale)
+        percentiles['p99_865'] = stats.rayleigh.ppf(0.99865, loc=loc, scale=scale)
+    
+    elif dist_name == 'Beta' and params is not None:
+        a, b, loc, scale = params
+        # Beta distribution is defined on [0,1], so we need to scale back
+        p_0135_scaled = stats.beta.ppf(0.00135, a, b)
+        p_50_scaled = stats.beta.ppf(0.50, a, b)
+        p_99865_scaled = stats.beta.ppf(0.99865, a, b)
+        # Transform back to original scale
+        data_range = max(data) - min(data) + 2e-6
+        percentiles['p0_135'] = p_0135_scaled * data_range + min(data) - 1e-6
+        percentiles['p50'] = p_50_scaled * data_range + min(data) - 1e-6
+        percentiles['p99_865'] = p_99865_scaled * data_range + min(data) - 1e-6
+    
+    else:
+        # Fallback to empirical percentiles
+        percentiles['p0_135'] = np.percentile(measurements, 0.135)
+        percentiles['p50'] = np.percentile(measurements, 50)
+        percentiles['p99_865'] = np.percentile(measurements, 99.865)
+    
+    return percentiles
+
+
 def compute_process_capability(mean: float, std: float, usl: float, lsl: float, sample_size: int, 
                              distribution_name: str, p0_135: float, p50: float, p99_865: float) -> Dict[str, float]:
     """Compute Cp and Cpk indices with confidence intervals, adjusted for distribution type."""
@@ -153,6 +220,7 @@ def calculate_statistics(measurements: List[float], usl: float, lsl: float,
         n_within_tolerance = np.sum((np.array(measurements) >= lsl) & (np.array(measurements) <= usl))
 
         distribution = determine_best_distribution(measurements)
+        percentiles = get_percentiles(measurements, distribution)
         capability = compute_process_capability(
             mean, std, usl, lsl, sample_size, 
             distribution['distribution'], percentiles['p0_135'], percentiles['p50'], percentiles['p99_865']
