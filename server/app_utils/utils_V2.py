@@ -9,6 +9,7 @@ import base64
 import io
 import matplotlib.pyplot as plt
 import json
+from math import sqrt
 
 
 # Utility Functions
@@ -502,7 +503,40 @@ def analyze_inspection_data_json(json_data: Union[str, dict]) -> tuple[dict, dic
         print(f"Error analyzing JSON data: {e}")
         return {}, {}
     
-
+def calculate_graph_statistics(measurements: List[float]) -> Dict[str, float]:
+    """
+    Calculate statistical metrics for a list of measurements.
+    Args:
+        measurements (List[float]): List of numeric measurements.
+    Returns:
+        Dict[str, float]: Dictionary with mean, std, max, min, UCL, and LCL.
+    Raises:
+        ValueError: If measurements are empty or contain non-numeric values.
+    """
+    if not measurements:
+        raise ValueError("Measurements list cannot be empty")
+    
+    # Check if all measurements are numeric
+    if not all(isinstance(x, (int, float)) for x in measurements):
+        raise ValueError("All measurements must be numeric")
+    
+    mean = np.mean(measurements)
+    std = np.std(measurements, ddof=1)  # Sample standard deviation
+    max_val = np.max(measurements)
+    min_val = np.min(measurements)
+    n = len(measurements)
+    # Calculate UCL and LCL for control charts
+    ucl = mean + 3 * (std / sqrt(n))
+    lcl = mean - 3 * (std / sqrt(n))
+    
+    return {
+        "mean": round(mean, 4),
+        "std": round(std, 4),
+        "max": round(max_val, 4),
+        "min": round(min_val, 4),
+        "ucl": round(ucl, 4),
+        "lcl": round(lcl, 4)
+    }
 
 # Example Usage
 # if __name__ == "__main__":
