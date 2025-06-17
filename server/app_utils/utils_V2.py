@@ -10,6 +10,7 @@ import io
 import matplotlib.pyplot as plt
 import json
 from math import sqrt
+from scipy.stats import norm
 
 
 # Utility Functions
@@ -138,9 +139,13 @@ def calculate_statistics(measurements: List[float], usl: float, lsl: float,
         max_val = np.max(measurements)
         range_val = max_val - min_val
         percentiles = {
-            'p0_135': np.percentile(measurements, 0.135),
-            'p50': np.percentile(measurements, 50),
-            'p99_865': np.percentile(measurements, 99.865)
+            'p0_135': norm.ppf(0.00135, loc=mean, scale=std),
+            'p50': norm.ppf(0.50, loc=mean, scale=std),
+            'p99_865': norm.ppf(0.99865, loc=mean, scale=std)
+        
+            # 'p0_135': np.percentile(measurements, 0.135),
+            # 'p50': np.percentile(measurements, 50),
+            # 'p99_865': np.percentile(measurements, 99.865)
         }
 
         n_below_lsl = np.sum(np.array(measurements) < lsl)

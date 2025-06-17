@@ -1,4 +1,4 @@
-# Generate CMM Report API Documentation
+# CMM Report API Documentation
 
 
 ## API Endpoint

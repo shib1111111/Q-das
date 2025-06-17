@@ -185,7 +185,14 @@
                     <span class="bold-label">x<sub>50%</sub></span> = {{ '%.5f'|format(param.percentile_50) if param.percentile_50 is defined and param.percentile_50 is not none else 'N/A' }}<br>
                     <span class="bold-label">x<sub>0.135%</sub></span> = {{ '%.5f'|format(param.percentile_0_135) if param.percentile_0_135 is defined and param.percentile_0_135 is not none else 'N/A' }}<br>
                     <span class="bold-label">x<sub>99.865%</sub></span> = {{ '%.5f'|format(param.percentile_99_865) if param.percentile_99_865 is defined and param.percentile_99_865 is not none else 'N/A' }}<br>
-                    <span class="bold-label">6s</span> = {{ '%.5f'|format(param.std * 6) if param.std is defined and param.std is not none else 'N/A' }}<br>
+                    <span class="bold-label">
+                        {% if param.distribution_name == 'Normal' %}6s{% else %} Xup3 - Xlo3 {% endif %}
+                    </span> = 
+                    {% if param.distribution_name == 'Normal' %}
+                        {{ '%.5f'|format(param.std * 6) if param.std is defined and param.std is not none else 'N/A' }}
+                    {% else %}
+                        {{ '%.5f'|format(param.percentile_99_865 - param.percentile_0_135) if param.percentile_99_865 is defined and param.percentile_0_135 is defined and param.percentile_99_865 is not none and param.percentile_0_135 is not none else 'N/A' }}
+                    {% endif %}<br>                    
                     <span class="bold-label">p<sub>&lt;T&gt;</sub></span> = {{ '%.5f%%'|format(param.p_within_tolerance) if param.p_within_tolerance is defined and param.p_within_tolerance is not none else 'N/A' }}<br>
                     <span class="bold-label">p<sub>&gt;USL</sub></span> = {{ '%.5f%%'|format(param.p_above_usl) if param.p_above_usl is defined and param.p_above_usl is not none else 'N/A' }}<br>
                     <span class="bold-label">p<sub>&lt;LSL</sub></span> = {{ '%.5f%%'|format(param.p_below_lsl) if param.p_below_lsl is defined and param.p_below_lsl is not none else 'N/A' }}
