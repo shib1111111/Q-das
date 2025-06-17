@@ -2,7 +2,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from app_utils.utils import analyze_inspection_data
+from typing import Dict, Any
+# from app_utils.utils import analyze_inspection_data
+from app_utils.utils_V2 import analyze_inspection_data,analyze_inspection_data_json
 from app_utils.pdf_render import render_report_to_pdf
 import tempfile
 import os
@@ -107,4 +109,43 @@ async def generate_pdf(file: UploadFile = File(...)):
 
     except Exception as e:
         logger.exception("Failed to generate PDF")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
+
+@api_router.post("/generate-cmm-report/")
+@log_time_taken
+async def generate_cmm_report(inspection_data: Dict[str, Any]):
+    """Generate a PDF report from JSON data provided in the request body."""
+    try:
+        # Basic validation for required keys
+        if not isinstance(inspection_data, dict) or "metadata" not in inspection_data or "parameter_info" not in inspection_data:
+            raise HTTPException(status_code=400, detail="Invalid JSON format: 'metadata' and 'parameter_info' keys are required.")
+
+        # Analyze JSON data directly from the request body
+        metadata, parameter_info = analyze_inspection_data_json(inspection_data)
+        
+        if not metadata or not parameter_info:
+            raise HTTPException(status_code=400, detail="Failed to process JSON data or no valid data found.")
+
+        # Generate PDF
+        output_dir = 'temp_file'
+        os.makedirs(output_dir, exist_ok=True)
+        output_pdf_path = os.path.join(output_dir, 'mca_cmm_report_json.pdf')
+        output_pdf = render_report_to_pdf(metadata, parameter_info, output_pdf=output_pdf_path)
+
+        # Read PDF and encode to base64
+        with open(output_pdf, "rb") as f:
+            pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+        # Clean up temporary file
+        os.remove(output_pdf)
+
+        return JSONResponse(content={
+            'message': 'PDF generated successfully.',
+            "filename": os.path.basename(output_pdf),
+            "content": pdf_base64
+        })
+
+    except Exception as e:
+        logger.exception("Failed to generate PDF from JSON body")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

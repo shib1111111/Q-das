@@ -174,9 +174,9 @@
                     <span class="bold-label">R</span> = {{ '%.3f'|format(param.range) if param.range is defined and param.range is not none else 'N/A' }}<br>
                     <span class="bold-label">n<sub>eff</sub></span> = {{ param.effective_sample_size|default('N/A') }}<br>
                     <span class="bold-label">n<sub>tot</sub></span> = {{ param.sample_size|default('N/A') }}<br>
-                    <span class="bold-label">n<sub><T></sub></span> = {{ param.n_within_tolerance|default('N/A') }}<br>
-                    <span class="bold-label">n<sub>USL</sub></span> = {{ param.n_above_usl|default('N/A') }}<br>
-                    <span class="bold-label">n<sub>LSL</sub></span> = {{ param.n_below_lsl|default('N/A') }}
+                    <span class="bold-label">n<sub>&lt;T&gt;</T></sub></span> = {{ param.n_within_tolerance|default('N/A') }}<br>
+                    <span class="bold-label">n<sub>&gt;USL</sub></span> = {{ param.n_above_usl|default('N/A') }}<br>
+                    <span class="bold-label">n<sub>&lt;LSL</sub></span> = {{ param.n_below_lsl|default('N/A') }}
                 </td>
                 <td style="width: 33%;">
                     <strong>Statistics</strong><br>
@@ -186,9 +186,9 @@
                     <span class="bold-label">x<sub>0.135%</sub></span> = {{ '%.5f'|format(param.percentile_0_135) if param.percentile_0_135 is defined and param.percentile_0_135 is not none else 'N/A' }}<br>
                     <span class="bold-label">x<sub>99.865%</sub></span> = {{ '%.5f'|format(param.percentile_99_865) if param.percentile_99_865 is defined and param.percentile_99_865 is not none else 'N/A' }}<br>
                     <span class="bold-label">6s</span> = {{ '%.5f'|format(param.std * 6) if param.std is defined and param.std is not none else 'N/A' }}<br>
-                    <span class="bold-label">p<sub><T></sub></span> = {{ '%.5f%%'|format(param.p_within_tolerance) if param.p_within_tolerance is defined and param.p_within_tolerance is not none else 'N/A' }}<br>
-                    <span class="bold-label">p<sub>USL</sub></span> = {{ '%.5f%%'|format(param.p_above_usl) if param.p_above_usl is defined and param.p_above_usl is not none else 'N/A' }}<br>
-                    <span class="bold-label">p<sub>LSL</sub></span> = {{ '%.5f%%'|format(param.p_below_lsl) if param.p_below_lsl is defined and param.p_below_lsl is not none else 'N/A' }}
+                    <span class="bold-label">p<sub>&lt;T&gt;</sub></span> = {{ '%.5f%%'|format(param.p_within_tolerance) if param.p_within_tolerance is defined and param.p_within_tolerance is not none else 'N/A' }}<br>
+                    <span class="bold-label">p<sub>&gt;USL</sub></span> = {{ '%.5f%%'|format(param.p_above_usl) if param.p_above_usl is defined and param.p_above_usl is not none else 'N/A' }}<br>
+                    <span class="bold-label">p<sub>&lt;LSL</sub></span> = {{ '%.5f%%'|format(param.p_below_lsl) if param.p_below_lsl is defined and param.p_below_lsl is not none else 'N/A' }}
                 </td>
             </tr>
         </table>
@@ -196,7 +196,10 @@
         <!-- Analysis Section -->
         <div class="analysis-section">
             <p><span class="bold-label">Anderson-Darling test:</span> {% if param.distribution_p_value is defined and param.distribution_p_value is not none %}{{ 'H1 : subgroup is not derived from a Normal distribution' if param.distribution_p_value < 0.05 else 'H0 : subgroup is derived from a Normal distribution' }}{% else %}N/A{% endif %}</p>
-            <p><span class="bold-label">p value:</span> {{ '%.4f'|format(param.distribution_p_value) if param.distribution_p_value is defined and param.distribution_p_value is not none else 'N/A' }}</p>
+            <p>
+                <span class="bold-label">P-Value:</span> 
+                {{ '%.4f'|format(param.distribution_p_value) if param.distribution_p_value is defined and param.distribution_p_value is not none and param.distribution_p_value > 0.001 else '< 0.001' if param.distribution_p_value is defined and param.distribution_p_value is not none else 'N/A' }}
+            </p>            
             <p><span class="bold-label">Distribution:</span> {{ param.distribution_name|default('N/A') }} Distribution</p>
             <p><span class="bold-label">Calculation Methods:</span> M2,1 percentile (0.135%-50%-99.865%)</p>
 
