@@ -300,7 +300,7 @@ curl -X POST "http://<your-api-base-url>/generate-cmm-report/" \
 **POST** `/calculate_graph_statistics/`
 
 ## Description
-Processes a nested JSON dictionary containing measurement data for multiple parameters and calculates statistical metrics for each parameter. The input includes Upper Specification Limit (USL), Lower Specification Limit (LSL), and a list of measurements. The API appends statistical calculations (mean, standard deviation, max, min, upper control limit, and lower control limit) to each parameter's data and returns the updated dictionary.
+Processes a nested JSON dictionary containing measurement data for multiple parameters and calculates statistical metrics for each parameter. The input includes Upper Specification Limit (USL), Lower Specification Limit (LSL), and a list of measurements. The API appends statistical calculations (mean, standard deviation, max, min, upper control limit, and lower control limit) to each parameter's data and returns the updated dictionary for Charts.
 
 ## Request
 
