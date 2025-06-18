@@ -4,6 +4,7 @@ from scipy import stats
 from statsmodels.stats.diagnostic import normal_ad
 from typing import List, Dict, Union, Optional
 from datetime import datetime
+from sklearn.mixture import GaussianMixture
 import os
 import base64
 import io
@@ -15,7 +16,7 @@ from scipy.stats import norm
 
 # Utility Functions
 
-def get_percentiles(measurements: List[float], distribution: Dict[str, Union[str, float, tuple]]) -> Dict[str, float]:
+def calculate_percentiles(measurements: List[float], distribution: Dict[str, Union[str, float, tuple]]) -> Dict[str, float]:
     dist_name = distribution['distribution']
     params = distribution['params']
     
@@ -80,7 +81,72 @@ def get_percentiles(measurements: List[float], distribution: Dict[str, Union[str
     
     return percentiles
 
+def calculate_cdf_probabilities(measurements: List[float], usl: float, lsl: float, distribution: Dict[str, Union[str, float, tuple]]) -> Dict[str, float]:
+    try:
+        # Initialize probabilities
+        p_within_tolerance = 0.0
+        p_above_usl = 0.0
+        p_below_lsl = 0.0
+        
+        if not measurements or distribution.get('params') is None:
+            return {
+                'p_within_tolerance': p_within_tolerance,
+                'p_above_usl': p_above_usl,
+                'p_below_lsl': p_below_lsl
+            }
 
+        measurements = np.asarray(measurements)
+        params = distribution.get('params')
+        
+        # Map distribution name to scipy.stats distribution
+        dist_map = {
+            'Normal': stats.norm,
+            'Log-Normal': stats.lognorm,
+            'Exponential': stats.expon,
+            'Gamma': stats.gamma,
+            'Weibull': stats.weibull_min,
+            'Rayleigh': stats.rayleigh,
+            'Beta': stats.beta
+        }
+        dist = dist_map.get(distribution['distribution'], stats.norm)
+
+        # Calculate CDF values based on distribution
+        if distribution['distribution'] == 'Normal':
+            loc, scale = params  # mean, std
+            p_below_usl = dist.cdf(usl, loc=loc, scale=scale)
+            p_below_lsl = dist.cdf(lsl, loc=loc, scale=scale)
+            p_within_tolerance = p_below_usl - p_below_lsl
+            p_above_usl = 1 - p_below_usl
+        elif distribution['distribution'] == 'Beta':
+            a, b, loc, scale = params
+            p_below_usl = dist.cdf(usl, a, b, loc=loc, scale=scale)
+            p_below_lsl = dist.cdf(lsl, a, b, loc=loc, scale=scale)
+            p_within_tolerance = p_below_usl - p_below_lsl
+            p_above_usl = 1 - p_below_usl
+        else:
+            # Handle other distributions with potential data shift
+            min_val = min(measurements)
+            shift = min_val - 1e-6 if min_val <= 0 else 0
+            p_below_usl = dist.cdf(usl - shift, *params)
+            p_below_lsl = dist.cdf(lsl - shift, *params)
+            p_within_tolerance = p_below_usl - p_below_lsl
+            p_above_usl = 1 - p_below_usl
+
+        # Convert probabilities to percentage
+        return {
+            'p_within_tolerance': p_within_tolerance * 100,
+            'p_above_usl': p_above_usl * 100,
+            'p_below_lsl': p_below_lsl * 100
+        }
+    
+    except Exception as e:
+        print(f"Error calculating CDF probabilities: {e}")
+        return {
+            'p_within_tolerance': 0.0,
+            'p_above_usl': 0.0,
+            'p_below_lsl': 0.0
+        }
+    
 def compute_process_capability(mean: float, std: float, usl: float, lsl: float, sample_size: int, 
                              distribution_name: str, p0_135: float, p50: float, p99_865: float) -> Dict[str, float]:
     """Compute Cp and Cpk indices with confidence intervals, adjusted for distribution type."""
@@ -180,9 +246,7 @@ def determine_best_distribution(measurements: List[float]) -> Dict[str, Union[st
         print(f"Error determining distribution: {e}")
         return {'distribution': 'Normal', 'p_value': 1.0, 'method': 'Anderson-Darling', 'params': None}
 
-def calculate_statistics(measurements: List[float], usl: float, lsl: float, 
-                        cp_target: float = 1.33, cpk_target: float = 1.33, 
-                        target: float = None) -> Dict[str, Union[float, int, bool, str]]:
+def calculate_statistics(measurements: List[float], usl: float, lsl: float, cp_target: float = 1.33, cpk_target: float = 1.33, target: float = None) -> Dict[str, Union[float, int, bool, str]]:
     """Calculate statistical metrics for measurements, including CDF-based probabilities."""
     try:
         sample_size = len(measurements)
@@ -205,73 +269,13 @@ def calculate_statistics(measurements: List[float], usl: float, lsl: float,
         min_val = np.min(measurements)
         max_val = np.max(measurements)
         range_val = max_val - min_val
-        percentiles = {
-            'p0_135': norm.ppf(0.00135, loc=mean, scale=std),
-            'p50': norm.ppf(0.50, loc=mean, scale=std),
-            'p99_865': norm.ppf(0.99865, loc=mean, scale=std)
-        
-            # 'p0_135': np.percentile(measurements, 0.135),
-            # 'p50': np.percentile(measurements, 50),
-            # 'p99_865': np.percentile(measurements, 99.865)
-        }
-
         n_below_lsl = np.sum(np.array(measurements) < lsl)
         n_above_usl = np.sum(np.array(measurements) > usl)
         n_within_tolerance = np.sum((np.array(measurements) >= lsl) & (np.array(measurements) <= usl))
-
         distribution = determine_best_distribution(measurements)
-        percentiles = get_percentiles(measurements, distribution)
-        capability = compute_process_capability(
-            mean, std, usl, lsl, sample_size, 
-            distribution['distribution'], percentiles['p0_135'], percentiles['p50'], percentiles['p99_865']
-        )
-
-        # Calculate probabilities using CDF, with tolerance (USL - LSL) as default target
-        tolerance = usl - lsl if pd.notna(usl) and pd.notna(lsl) else 0
-        target = tolerance if target is None else target  # Use tolerance as default target
-        measurements = np.asarray(measurements)
-        params = distribution.get('params')
-
-        # Initialize probabilities
-        p_within_tolerance = 0.0
-        p_above_usl = 0.0
-        p_below_lsl = 0.0
-
-        if params is not None and len(measurements) > 0:
-            # Map distribution name to scipy.stats distribution
-            dist_map = {
-                'Normal': stats.norm, 'Log-Normal': stats.lognorm, 'Exponential': stats.expon,
-                'Gamma': stats.gamma, 'Weibull': stats.weibull_min, 'Rayleigh': stats.rayleigh,
-                'Beta': stats.beta
-            }
-            dist = dist_map.get(distribution['distribution'], stats.norm)
-
-            # Calculate CDF values
-            if distribution['distribution'] == 'Normal':
-                loc, scale = params  # mean, std
-                p_below_usl = dist.cdf(usl, loc=loc, scale=scale)
-                p_below_lsl = dist.cdf(lsl, loc=loc, scale=scale)
-                p_within_tolerance = p_below_usl - p_below_lsl
-                p_above_usl = 1 - p_below_usl
-            elif distribution['distribution'] == 'Beta':
-                a, b, loc, scale = params
-                p_below_usl = dist.cdf(usl, a, b, loc=loc, scale=scale)
-                p_below_lsl = dist.cdf(lsl, a, b, loc=loc, scale=scale)
-                p_within_tolerance = p_below_usl - p_below_lsl
-                p_above_usl = 1 - p_below_usl
-            else:
-                # For other distributions, adjust data if shifted
-                min_val = min(measurements)
-                shift = min_val - 1e-6 if min_val <= 0 else 0
-                p_below_usl = dist.cdf(usl - shift, *params)
-                p_below_lsl = dist.cdf(lsl - shift, *params)
-                p_within_tolerance = p_below_usl - p_below_lsl
-                p_above_usl = 1 - p_below_usl
-
-        # Convert probabilities to percentage
-        p_within_tolerance *= 100
-        p_above_usl *= 100
-        p_below_lsl *= 100
+        percentiles = calculate_percentiles(measurements, distribution)
+        probabilities = calculate_cdf_probabilities(measurements, usl, lsl, distribution)
+        capability = compute_process_capability(mean, std, usl, lsl, sample_size, distribution['distribution'], percentiles['p0_135'], percentiles['p50'], percentiles['p99_865'])
         cp_requirements_met = capability['Cp'] >= cp_target
         cpk_requirements_met = capability['Cpk'] >= cpk_target
         requirements_met = cp_requirements_met and cpk_requirements_met
@@ -291,9 +295,9 @@ def calculate_statistics(measurements: List[float], usl: float, lsl: float,
             'n_below_lsl': n_below_lsl,
             'n_above_usl': n_above_usl,
             'n_within_tolerance': n_within_tolerance,
-            'p_below_lsl': p_below_lsl,  # From CDF
-            'p_above_usl': p_above_usl,  # From CDF
-            'p_within_tolerance': p_within_tolerance,  # P(X < T) where T is tolerance
+            'p_below_lsl': probabilities['p_below_lsl'],  # From CDF
+            'p_above_usl': probabilities['p_above_usl'],  # From CDF
+            'p_within_tolerance': probabilities['p_within_tolerance'],  # P(X < T) where T is tolerance
             'Cp': capability['Cp'],
             'Cpk': capability['Cpk'],
             'Cp_lower': capability['Cp_lower'],
