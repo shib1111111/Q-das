@@ -15,7 +15,6 @@ from scipy.stats import norm
 
 
 # Utility Functions
-
 def calculate_percentiles(measurements: List[float], distribution: Dict[str, Union[str, float, tuple]]) -> Dict[str, float]:
     dist_name = distribution['distribution']
     params = distribution['params']
