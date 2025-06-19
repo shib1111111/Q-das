@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from typing import Dict, Any
 # from app_utils.utils import analyze_inspection_data
-from app_utils.utils_V2 import analyze_inspection_data,analyze_inspection_data_json,calculate_graph_statistics
+from app_utils.utils_V2 import analyze_inspection_data_excel,analyze_inspection_data_json,calculate_graph_statistics
 from app_utils.pdf_render import render_report_to_pdf
 import tempfile
 import os
@@ -68,7 +68,7 @@ async def extract_info(file: UploadFile = File(...)):
             temp.write(await file.read())
             temp_path = temp.name
 
-        metadata, parameter_info = analyze_inspection_data(temp_path)
+        metadata, parameter_info = analyze_inspection_data_excel(temp_path)
         os.remove(temp_path)
 
         return JSONResponse(content=jsonable_encoder({
@@ -90,7 +90,7 @@ async def generate_pdf(file: UploadFile = File(...)):
             temp.write(await file.read())
             temp_path = temp.name
 
-        metadata, parameter_info = analyze_inspection_data(temp_path)
+        metadata, parameter_info = analyze_inspection_data_excel(temp_path)
         output_dir = 'temp_file'
         os.makedirs(output_dir, exist_ok=True)
         output_pdf_path = os.path.join(output_dir, 'mca_cmm_report.pdf')
@@ -154,12 +154,6 @@ async def generate_cmm_report(inspection_data: Dict[str, Any]):
 
 @api_router.post("/calculate_graph_statistics/")
 async def graph_statistics(inspection_data: Dict[str, Any]):
-    """
-    Process nested dictionary JSON data and append statistical calculations.
-    Expects a nested dictionary with parameter names as keys and dictionaries containing
-    USL, LSL, and measurements as values.
-    Returns the input dictionary with appended statistics for each parameter.
-    """
     try:
         # Validate input is a dictionary
         if not isinstance(inspection_data, dict):

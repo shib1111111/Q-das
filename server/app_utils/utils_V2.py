@@ -3,8 +3,6 @@ import pandas as pd
 from scipy import stats
 from statsmodels.stats.diagnostic import normal_ad
 from typing import List, Dict, Union, Optional
-from datetime import datetime
-from sklearn.mixture import GaussianMixture
 import os
 import base64
 import io
@@ -271,6 +269,7 @@ def calculate_statistics(measurements: List[float], usl: float, lsl: float, cp_t
         n_below_lsl = np.sum(np.array(measurements) < lsl)
         n_above_usl = np.sum(np.array(measurements) > usl)
         n_within_tolerance = np.sum((np.array(measurements) >= lsl) & (np.array(measurements) <= usl))
+
         distribution = determine_best_distribution(measurements)
         percentiles = calculate_percentiles(measurements, distribution)
         probabilities = calculate_cdf_probabilities(measurements, usl, lsl, distribution)
@@ -439,7 +438,7 @@ def parse_metadata(df):
         print(f"Error parsing metadata: {e}")
         return {}
 
-def analyze_inspection_data(file_path):
+def analyze_inspection_data_excel(file_path):
     """Analyze Excel file and return metadata and parameter information."""
     try:
         df = pd.read_excel(file_path, header=1)
@@ -506,8 +505,6 @@ def analyze_inspection_data(file_path):
             continue
 
     return metadata, parameter_info
-
-
 
 def analyze_inspection_data_json(json_data: Union[str, dict]) -> tuple[dict, dict]:
     """Analyze JSON data and return metadata and parameter information with statistical analysis."""
@@ -580,15 +577,6 @@ def analyze_inspection_data_json(json_data: Union[str, dict]) -> tuple[dict, dic
         return {}, {}
     
 def calculate_graph_statistics(measurements: List[float]) -> Dict[str, float]:
-    """
-    Calculate statistical metrics for a list of measurements.
-    Args:
-        measurements (List[float]): List of numeric measurements.
-    Returns:
-        Dict[str, float]: Dictionary with mean, std, max, min, UCL, and LCL.
-    Raises:
-        ValueError: If measurements are empty or contain non-numeric values.
-    """
     if not measurements:
         raise ValueError("Measurements list cannot be empty")
     
