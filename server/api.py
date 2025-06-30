@@ -58,9 +58,9 @@ def validate_file(file: UploadFile):
     if not file.filename.endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="Only Excel (.xlsx) files are supported.")
 
-@api_router.post("/extract-info/")
+@api_router.post("/generate_json_from_excel/")
 @log_time_taken
-async def extract_info(file: UploadFile = File(...)):
+async def generate_json_from_excel(file: UploadFile = File(...)):
     validate_file(file)
 
     try:
@@ -80,9 +80,9 @@ async def extract_info(file: UploadFile = File(...)):
         logger.exception("Failed to extract metadata")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@api_router.post("/generate-pdf/")
+@api_router.post("/generate_pdf_from_excel/")
 @log_time_taken
-async def generate_pdf(file: UploadFile = File(...)):
+async def generate_pdf_from_excel(file: UploadFile = File(...)):
     validate_file(file)
 
     try:
@@ -111,7 +111,6 @@ async def generate_pdf(file: UploadFile = File(...)):
         logger.exception("Failed to generate PDF")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     
-
 @api_router.post("/generate-cmm-report/")
 @log_time_taken
 async def generate_cmm_report(inspection_data: Dict[str, Any]):
@@ -150,7 +149,27 @@ async def generate_cmm_report(inspection_data: Dict[str, Any]):
         logger.exception("Failed to generate PDF from JSON body")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     
+@api_router.post("/generate-cmm-report-json/")
+@log_time_taken
+async def generate_cmm_report_json(inspection_data: Dict[str, Any]):
+    """Generate a JSON report from JSON data provided in the request body."""
+    try:
+        # Basic validation for required keys
+        if not isinstance(inspection_data, dict) or "metadata" not in inspection_data or "parameter_info" not in inspection_data:
+            raise HTTPException(status_code=400, detail="Invalid JSON format: 'metadata' and 'parameter_info' keys are required.")
 
+        # Analyze JSON data directly from the request body
+        metadata, parameter_info = analyze_inspection_data_json(inspection_data)
+        if not metadata or not parameter_info:
+            raise HTTPException(status_code=400, detail="Failed to process JSON data or no valid data found.")
+        return JSONResponse(content=jsonable_encoder({
+            "metadata": sanitize_for_json(metadata),
+            "parameter_info": sanitize_for_json(parameter_info)
+        }))
+
+    except Exception as e:
+        logger.exception("Failed to Make the report for Given JSON")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @api_router.post("/calculate_graph_statistics/")
 async def graph_statistics(inspection_data: Dict[str, Any]):

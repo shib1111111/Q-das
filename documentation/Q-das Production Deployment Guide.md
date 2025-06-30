@@ -107,7 +107,8 @@ Group=www-data
 WorkingDirectory=/home/your_user/Q-das/server
 Environment="PATH=/home/your_user/Q-das/server/venv/bin"
 ExecStart=/home/your_user/Q-das/server/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app:app --bind 127.0.0.1:8000
-
+Restart=always
+RestartSec=3
 [Install]
 WantedBy=multi-user.target
 ```
