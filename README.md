@@ -111,7 +111,7 @@ Q-das/
    ```bash
    uvicorn app:app --host <ip> --port <port> --ssl-certfile ./ca_certificates/cert.pem --ssl-keyfile ./ca_certificates/key.pem
    ```
-   Replace `<ip>` with the desired IP address (e.g., `0.0.0.0` for all interfaces) and `<port>` with the desired port (e.g., `8080`).
+   Replace `<ip>` with the desired IP address (e.g., `0.0.0.0` for all interfaces) and `<port>` with the desired port (e.g., `8000`).
    The API will be available at `https://<ip>:<port>`.
 
    For running on localhost:
